@@ -145,6 +145,14 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
+
+    if (app.Configuration.GetValue<bool>("Seed:DemoData"))
+    {
+        await DemoDataSeeder.SeedAsync(
+            db,
+            scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>(),
+            scope.ServiceProvider.GetRequiredService<ILogger<Program>>());
+    }
 }
 
 app.Run();

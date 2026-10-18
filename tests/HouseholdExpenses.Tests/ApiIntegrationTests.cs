@@ -4,7 +4,8 @@ using HouseholdExpenses.Core.Contracts;
 
 namespace HouseholdExpenses.Tests;
 
-public class ApiIntegrationTests(ApiFixture api) : IClassFixture<ApiFixture>
+[Collection(ApiCollection.Name)]
+public class ApiIntegrationTests(ApiFixture api)
 {
     private static readonly DateOnly Today = new(2026, 3, 15);
 

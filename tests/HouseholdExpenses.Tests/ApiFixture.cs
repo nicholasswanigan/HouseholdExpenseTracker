@@ -21,6 +21,8 @@ public sealed class ApiFixture : WebApplicationFactory<Program>
     {
         // Environment variables are visible to Program's eager config reads, unlike late-bound test settings.
         Environment.SetEnvironmentVariable("ConnectionStrings__Default", $"Data Source={_dbPath}");
+        // Tests create their own users; the demo data is exercised explicitly in DemoDataTests.
+        Environment.SetEnvironmentVariable("Seed__DemoData", "false");
     }
 
     public async Task<(HttpClient Client, UserDto User)> RegisterAsync(string name)
@@ -52,4 +54,14 @@ public static class HttpExtensions
 
     public static Task<HttpResponseMessage> PostJsonAsync<T>(this HttpClient c, string url, T body) =>
         c.PostAsJsonAsync(url, body, ApiFixture.Json);
+}
+
+/// <summary>
+/// All API tests share one server and database. The fixture configures the app through environment
+/// variables, which are process-wide, so two fixtures running in parallel would trample each other.
+/// </summary>
+[CollectionDefinition(Name)]
+public class ApiCollection : ICollectionFixture<ApiFixture>
+{
+    public const string Name = "api";
 }
