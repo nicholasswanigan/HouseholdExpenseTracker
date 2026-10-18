@@ -49,9 +49,23 @@ dotnet run --project src/HouseholdExpenses.Api --launch-profile http
 dotnet run --project src/HouseholdExpenses.Web --launch-profile http
 ```
 
-Open http://localhost:5173, sign up, create a household, and share the invite code with a second account (use a private window) to try it out.
+Open http://localhost:5173 and sign in with one of the demo accounts below, or sign up with your own.
 
 The SQLite database (`household.db`) is created and migrated automatically on API startup.
+
+### Demo accounts
+
+When the API runs in the Development environment it seeds three fake users and a household called "Maple Street Apartment" with two months of expenses (rent, groceries, utilities, internet, dining) using all three split types, plus one settlement. The addresses use `example.com`, which is reserved for documentation, so none of them belong to a real person.
+
+| Name | Email | Password |
+|---|---|---|
+| Alex Rivera (household owner) | `alex.rivera@example.com` | `Demo1234!` |
+| Jordan Lee | `jordan.lee@example.com` | `Demo1234!` |
+| Sam Patel | `sam.patel@example.com` | `Demo1234!` |
+
+Sign in as one person in a normal window and another in a private window to see the same household from two sides. To join the household with a brand new account, use the invite code `DEMO2345`.
+
+Seeding is controlled by `Seed:DemoData` in `appsettings.Development.json` and is off everywhere else. It only runs once; delete `household.db` to reset the demo data.
 
 ```bash
 dotnet test        # runs everything
@@ -106,6 +120,7 @@ Hard-refresh the page (Ctrl+F5). The old stylesheet may be cached by the browser
 
 | Setting | Where | Notes |
 |---|---|---|
+| `Seed:DemoData` | `appsettings.Development.json` | `true` creates the demo accounts above on startup; leave it unset in production |
 | `Jwt:Key` | `appsettings.Development.json` (dev only) | **Must be overridden in production** (>= 32 chars). Use `dotnet user-secrets` or the `Jwt__Key` env var |
 | `ConnectionStrings:Default` | `appsettings.json` | defaults to `Data Source=household.db` |
 | `Cors:AllowedOrigins` | `appsettings*.json` | the origin(s) the Blazor app is served from |
