@@ -24,7 +24,7 @@ Each screenshot shows the light theme on the left (signed in as Alex) and the da
 
 ![Expense history table with month, category and person filters](docs/screenshots/expense-history.png)
 
-**Adding an expense.** Split evenly (left side of the form shows each person's share), by percentage, or by exact amounts. The running total turns green when it adds up and red when it doesn't.
+**Adding an expense.** Split evenly, by percentage, or by exact amounts. On the left is a percentage split with its running total (green when it adds up to 100, red when it doesn't); on the right is an even split showing each person's share, with the odd cent handled so the shares always add up.
 
 ![New expense form with a percentage split on the left and an even split on the right](docs/screenshots/add-expense-percentage.png)
 
