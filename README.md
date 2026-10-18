@@ -10,6 +10,21 @@ Create a household, invite roommates or family, log shared expenses, and see who
 - Record settlements when someone pays someone back
 - Expense history filtered by month, category, or person
 - Users only ever see households they belong to (others return 404)
+- Light and dark themes: a toggle in the nav bar, remembered between visits and defaulting to your system setting
+
+## Screenshots
+
+Balances and suggested payments (light theme):
+
+![Balances tab showing net balances and a suggested payment](docs/screenshots/balances-light.png)
+
+Household list in the dark theme:
+
+![Household list in dark mode](docs/screenshots/households-dark.png)
+
+Adding an expense (split evenly, by percentage, or by exact amounts):
+
+<img src="docs/screenshots/expense-form-light.png" alt="New expense form" width="520">
 
 ## Solution layout
 
@@ -22,7 +37,9 @@ Create a household, invite roommates or family, log shared expenses, and see who
 
 ## Running it
 
-Requires the .NET 8 SDK.
+Requires the **.NET 8 SDK** (the latest 8.0.x patch; see [Troubleshooting](#troubleshooting) if `dotnet` complains). Check what you have with `dotnet --list-sdks` and `dotnet --list-runtimes`.
+
+Run these from the repository root. On Windows, wrap any path that contains a space in quotes.
 
 ```bash
 # terminal 1 - API on http://localhost:5080 (Swagger UI at /swagger)
@@ -39,6 +56,51 @@ The SQLite database (`household.db`) is created and migrated automatically on AP
 ```bash
 dotnet test        # runs everything
 ```
+
+## Troubleshooting
+
+**"You must install or update .NET to run this application"** (it lists the frameworks it found and says it wanted something like `Microsoft.NETCore.App 8.0.32`)
+The app was built by an SDK that is newer than the .NET runtime installed system-wide. Install the current .NET 8 SDK, which includes a matching runtime, then open a new terminal:
+
+```powershell
+winget install Microsoft.DotNet.SDK.8
+```
+
+Or download it from https://dotnet.microsoft.com/download/dotnet/8.0. Having .NET 10 installed does not help; the project targets .NET 8 and needs an 8.0.x runtime.
+
+**"No .NET SDKs were found"**, or `dotnet` is not recognized
+Only the runtime is installed, or it is not on your PATH. Install the SDK as above and restart the terminal. If you installed the SDK to a custom folder, point to it for the current session:
+
+```powershell
+$env:DOTNET_ROOT = "C:\path\to\dotnet"; $env:PATH = "$env:DOTNET_ROOT;$env:PATH"
+```
+
+**`cd` fails with "A positional parameter cannot be found"** (PowerShell)
+The folder path has a space in it. Quote it: `cd "C:/Users/me/Documents/Coding Projects/HouseholdExpenseTracker"`.
+
+**Build error `MSB3027` / "file is locked by: HouseholdExpenses.Api"**
+The API is still running from an earlier `dotnet run`, so the build cannot overwrite its DLLs. Stop it with Ctrl+C in that terminal (or end the process in Task Manager), then build again.
+
+**The page loads but shows "Can't reach the server"**
+The API is not running, or the front end is pointed at the wrong address.
+- Start the API (terminal 1 above) and check http://localhost:5080/swagger opens.
+- `ApiBaseUrl` in `src/HouseholdExpenses.Web/wwwroot/appsettings.json` must match the API address.
+- If you serve the front end on a different port, add that origin to `Cors:AllowedOrigins` in the API's `appsettings.Development.json`. The browser blocks the calls otherwise.
+
+**The API exits with "Jwt:Key must be set"**
+Outside the Development environment there is no signing key. Set one (32+ characters): `dotnet user-secrets set "Jwt:Key" "<random string>" --project src/HouseholdExpenses.Api`, or the `Jwt__Key` environment variable.
+
+**"Address already in use"** on port 5080 or 5173
+Another copy of the app is running. Stop it, or pass a different `--urls http://localhost:PORT` (and update `ApiBaseUrl` / `Cors:AllowedOrigins` to match).
+
+**Start over with a clean database**
+Stop the API and delete `household.db` in `src/HouseholdExpenses.Api`. It is recreated on the next start.
+
+**`dotnet ef` is not found**
+Run `dotnet tool restore` once from the repository root; it installs the version pinned in `.config/dotnet-tools.json`.
+
+**Dark mode looks wrong after an update**
+Hard-refresh the page (Ctrl+F5). The old stylesheet may be cached by the browser.
 
 ## Configuration
 
