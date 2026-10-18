@@ -16,13 +16,22 @@ h1:focus {
 }
 
 .balance-pos {
-    color: var(--bs-success-text-emphasis);
+    color: var(--bs-success);
     font-weight: 600;
 }
 
 .balance-neg {
-    color: var(--bs-danger-text-emphasis);
+    color: var(--bs-danger);
     font-weight: 600;
+}
+
+/* the base green and red are too dark to read on the dark background */
+[data-bs-theme="dark"] .balance-pos {
+    color: var(--bs-success-text-emphasis);
+}
+
+[data-bs-theme="dark"] .balance-neg {
+    color: var(--bs-danger-text-emphasis);
 }
 
 .invite-code {
