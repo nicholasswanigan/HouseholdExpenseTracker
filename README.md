@@ -41,6 +41,19 @@ Each screenshot shows the light theme on the left (signed in as Alex) and the da
 | `src/HouseholdExpenses.Web` | Blazor WebAssembly front end (talks to the API over HTTP with the JWT) |
 | `tests/HouseholdExpenses.Tests` | xUnit: unit tests for the Core logic + integration tests that boot the real API against a temp SQLite file |
 
+## Architecture
+
+[![Architecture diagram: Blazor front end, ASP.NET Core API, pure C# core library and SQLite](docs/architecture.png)](https://www.figma.com/board/7eNLFUxUYx8EAlhyzPTt9a/Household-Expense-Tracker-Architecture?node-id=0-1)
+
+[Open the interactive diagram in Figma](https://www.figma.com/board/7eNLFUxUYx8EAlhyzPTt9a/Household-Expense-Tracker-Architecture?node-id=0-1) (view-only link; sign in to Figma to copy it and edit your own version).
+
+How a request flows:
+1. The Blazor app sends JSON with a JWT bearer token to the API.
+2. The API pipeline handles CORS, validates the JWT and catches errors.
+3. Each household endpoint first checks the caller is a member of that household. If not, it returns 404, so users can't even tell whether another household exists.
+4. Expense and balance endpoints load data through EF Core and hand it to the pure logic in `HouseholdExpenses.Core` (`SplitCalculator`, `BalanceCalculator`, then `DebtSimplifier` for the suggested payments).
+5. Unit tests exercise the Core classes directly. Integration tests start the whole API against a temporary SQLite copy.
+
 ## Running it
 
 Requires the **.NET 8 SDK** (the latest 8.0.x patch; see [Troubleshooting](#troubleshooting) if `dotnet` complains). Check what you have with `dotnet --list-sdks` and `dotnet --list-runtimes`.
