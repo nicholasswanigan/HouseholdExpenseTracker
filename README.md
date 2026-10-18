@@ -14,17 +14,23 @@ Create a household, invite roommates or family, log shared expenses, and see who
 
 ## Screenshots
 
-Balances and suggested payments (light theme):
+Each screenshot shows the light theme on the left (signed in as Alex) and the dark theme on the right (signed in as Jordan), both looking at the same household.
 
-![Balances tab showing net balances and a suggested payment](docs/screenshots/balances-light.png)
+**Balances and suggested payments.** Net balance per person, and the fewest payments that settle the household.
 
-Household list in the dark theme:
+![Balances tab with net balances, suggested payments and payment history](docs/screenshots/balances.png)
 
-![Household list in dark mode](docs/screenshots/households-dark.png)
+**Expense history.** Every expense with its category, payer and split type. Filter by month, category or person.
 
-Adding an expense (split evenly, by percentage, or by exact amounts):
+![Expense history table with month, category and person filters](docs/screenshots/expense-history.png)
 
-<img src="docs/screenshots/expense-form-light.png" alt="New expense form" width="520">
+**Adding an expense.** Split evenly (left side of the form shows each person's share), by percentage, or by exact amounts. The running total turns green when it adds up and red when it doesn't.
+
+![New expense form with a percentage split on the left and an even split on the right](docs/screenshots/add-expense-percentage.png)
+
+**Recording a payment.** Click "Record" on a suggested payment, or enter any payment by hand. Recorded payments show in the history and update everyone's balance.
+
+![Record a payment form and payment history](docs/screenshots/record-payment.png)
 
 ## Solution layout
 
