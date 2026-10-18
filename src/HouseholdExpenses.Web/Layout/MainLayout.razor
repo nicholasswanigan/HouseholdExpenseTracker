@@ -1,0 +1,52 @@
+@inherits LayoutComponentBase
+@inject JwtAuthStateProvider Auth
+@inject NavigationManager Nav
+@inject IJSRuntime Js
+
+<nav class="navbar navbar-expand app-nav px-3" data-bs-theme="dark">
+    <a class="navbar-brand fw-semibold" href="">Household Expenses</a>
+    <AuthorizeView>
+        <Authorized>
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><NavLink class="nav-link" href="" Match="NavLinkMatch.All">Households</NavLink></li>
+            </ul>
+            <span class="navbar-text me-3">@context.User.Identity?.Name</span>
+            <button class="btn btn-outline-light btn-sm me-2" @onclick="ToggleTheme">@(dark ? "Light mode" : "Dark mode")</button>
+            <button class="btn btn-outline-light btn-sm" @onclick="SignOut">Sign out</button>
+        </Authorized>
+        <NotAuthorized>
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item"><NavLink class="nav-link" href="login">Sign in</NavLink></li>
+                <li class="nav-item"><NavLink class="nav-link" href="register">Sign up</NavLink></li>
+            </ul>
+            <button class="btn btn-outline-light btn-sm" @onclick="ToggleTheme">@(dark ? "Light mode" : "Dark mode")</button>
+        </NotAuthorized>
+    </AuthorizeView>
+</nav>
+
+<main class="container py-4">
+    @Body
+</main>
+
+@code {
+    private bool dark;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        dark = await Js.InvokeAsync<string>("appTheme.get") == "dark";
+        StateHasChanged();
+    }
+
+    private async Task ToggleTheme()
+    {
+        dark = !dark;
+        await Js.InvokeVoidAsync("appTheme.set", dark ? "dark" : "light");
+    }
+
+    private async Task SignOut()
+    {
+        await Auth.SignOutAsync();
+        Nav.NavigateTo("login");
+    }
+}

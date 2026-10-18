@@ -1,0 +1,150 @@
+@inject ApiClient Api
+@inject IJSRuntime Js
+
+@if (error is not null)
+{
+    <div class="alert alert-danger" role="alert">@error</div>
+}
+
+@if (summary is null)
+{
+    @if (error is null) { <p class="text-muted">Loading...</p> }
+}
+else
+{
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <h2 class="h5">Net balances</h2>
+            <div class="card">
+                <ul class="list-group list-group-flush">
+                    @foreach (var b in summary.Balances)
+                    {
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>@b.DisplayName</span>
+                            @if (b.Net > 0)
+                            {
+                                <span class="balance-pos">is owed @Fmt.Money(b.Net)</span>
+                            }
+                            else if (b.Net < 0)
+                            {
+                                <span class="balance-neg">owes @Fmt.Money(-b.Net)</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted">settled up</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <h2 class="h5">Suggested payments</h2>
+            @if (summary.SuggestedPayments.Count == 0)
+            {
+                <div class="alert alert-success">Everyone is settled up.</div>
+            }
+            else
+            {
+                <p class="text-muted small">The fewest payments that settle the whole household.</p>
+                <div class="card">
+                    <ul class="list-group list-group-flush">
+                        @foreach (var p in summary.SuggestedPayments)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span><strong>@p.FromName</strong> pays <strong>@p.ToName</strong> <span class="fw-semibold">@Fmt.Money(p.Amount)</span></span>
+                                <button class="btn btn-sm btn-outline-success" @onclick="() => OpenForm(p)">Record</button>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+
+            @if (!showForm)
+            {
+                <button class="btn btn-link px-0 mt-2" @onclick="() => OpenForm(null)">Record a different payment</button>
+            }
+        </div>
+    </div>
+
+    @if (showForm)
+    {
+        <SettlementForm @key="formVersion" Household="Household" Prefill="prefill" OnSaved="Saved" OnCancel="() => showForm = false" />
+    }
+
+    <h2 class="h5 mt-4">Payment history</h2>
+    @if (settlements is null || settlements.Count == 0)
+    {
+        <p class="text-muted">No payments recorded yet.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead><tr><th>Date</th><th>From</th><th>To</th><th class="text-end">Amount</th><th>Note</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var s in settlements)
+                {
+                    <tr>
+                        <td>@Fmt.Date(s.Date)</td>
+                        <td>@s.FromName</td>
+                        <td>@s.ToName</td>
+                        <td class="text-end">@Fmt.Money(s.Amount)</td>
+                        <td class="text-muted">@s.Note</td>
+                        <td class="text-end"><button class="btn btn-sm btn-link text-danger" @onclick="() => Delete(s)">Undo</button></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public HouseholdDetailDto Household { get; set; } = default!;
+
+    private BalanceSummaryDto? summary;
+    private List<SettlementDto>? settlements;
+    private SuggestedPaymentDto? prefill;
+    private bool showForm;
+    private int formVersion;
+    private string? error;
+
+    protected override Task OnInitializedAsync() => Reload();
+
+    private async Task Reload()
+    {
+        error = null;
+        try
+        {
+            summary = await Api.GetBalancesAsync(Household.Id);
+            settlements = await Api.GetSettlementsAsync(Household.Id);
+        }
+        catch (ApiException ex) { error = ex.Message; }
+    }
+
+    private void OpenForm(SuggestedPaymentDto? payment)
+    {
+        prefill = payment;
+        formVersion++; // forces a fresh form so the prefill is re-applied
+        showForm = true;
+    }
+
+    private async Task Saved()
+    {
+        showForm = false;
+        await Reload();
+    }
+
+    private async Task Delete(SettlementDto s)
+    {
+        if (!await Js.InvokeAsync<bool>("confirm", $"Remove the {Fmt.Money(s.Amount)} payment from {s.FromName} to {s.ToName}?")) return;
+        try
+        {
+            await Api.DeleteSettlementAsync(Household.Id, s.Id);
+            await Reload();
+        }
+        catch (ApiException ex) { error = ex.Message; }
+    }
+}

@@ -1,0 +1,218 @@
+@using HouseholdExpenses.Core.Services
+@inject ApiClient Api
+@inject AuthenticationStateProvider AuthProvider
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h3 class="h6">@(Existing is null ? "New expense" : "Edit expense")</h3>
+
+        @if (error is not null)
+        {
+            <div class="alert alert-danger py-2" role="alert">@error</div>
+        }
+
+        <form @onsubmit="Submit">
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label small mb-0">Description</label>
+                    <input class="form-control" maxlength="200" required placeholder="e.g. Weekly groceries" @bind="description" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Amount</label>
+                    <input class="form-control" type="number" step="0.01" min="0.01" required @bind="amount" @bind:after="StateHasChanged" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Date</label>
+                    <input class="form-control" type="date" required @bind="date" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-0">Category</label>
+                    <select class="form-select" @bind="category">
+                        @foreach (var c in Enum.GetValues<ExpenseCategory>()) { <option value="@c">@c</option> }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small mb-0">Paid by</label>
+                    <select class="form-select" @bind="payerId">
+                        @foreach (var m in Household.Members) { <option value="@m.UserId">@m.DisplayName</option> }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small mb-0">Split</label>
+                    <select class="form-select" @bind="splitType" @bind:after="StateHasChanged">
+                        <option value="@SplitType.Equal">Evenly</option>
+                        <option value="@SplitType.Percentage">By percentage</option>
+                        <option value="@SplitType.Exact">Exact amounts</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="form-label small mb-0">Who shares this expense?</label>
+                    @if (splitType != SplitType.Equal)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="FillEvenly">Fill evenly</button>
+                    }
+                </div>
+                @foreach (var row in rows)
+                {
+                    <div class="row g-2 align-items-center mb-1">
+                        <div class="col-6 col-md-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="chk-@row.UserId" @bind="row.Included" @bind:after="StateHasChanged" />
+                                <label class="form-check-label" for="chk-@row.UserId">@row.Name</label>
+                            </div>
+                        </div>
+                        @if (splitType != SplitType.Equal && row.Included)
+                        {
+                            <div class="col-6 col-md-3">
+                                <div class="input-group input-group-sm">
+                                    <input class="form-control" type="number" step="0.01" min="0" @bind="row.Value" @bind:after="StateHasChanged" />
+                                    <span class="input-group-text">@(splitType == SplitType.Percentage ? "%" : Fmt.CurrencySymbol)</span>
+                                </div>
+                            </div>
+                        }
+                        else if (splitType == SplitType.Equal && row.Included && amount > 0)
+                        {
+                            <div class="col-6 col-md-3 small text-muted">@Fmt.Money(EqualShare(row))</div>
+                        }
+                    </div>
+                }
+
+                @if (splitType == SplitType.Percentage)
+                {
+                    <div class="small mt-1 @(Total == 100m ? "text-success" : "text-danger")">Total: @Total.ToString("0.##")% (must be 100%)</div>
+                }
+                else if (splitType == SplitType.Exact)
+                {
+                    <div class="small mt-1 @(Total == amount ? "text-success" : "text-danger")">Total: @Fmt.Money(Total) of @Fmt.Money(amount)</div>
+                }
+            </div>
+
+            <div class="mt-3 d-flex gap-2">
+                <button class="btn btn-success" type="submit" disabled="@busy">@(busy ? "Saving..." : "Save expense")</button>
+                <button class="btn btn-outline-secondary" type="button" @onclick="OnCancel">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public HouseholdDetailDto Household { get; set; } = default!;
+    [Parameter] public ExpenseDto? Existing { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private sealed class Row
+    {
+        public required string UserId { get; init; }
+        public required string Name { get; init; }
+        public bool Included { get; set; }
+        public decimal? Value { get; set; }
+    }
+
+    private List<Row> rows = [];
+    private string description = "";
+    private decimal amount;
+    private DateOnly date = DateOnly.FromDateTime(DateTime.Today);
+    private ExpenseCategory category = ExpenseCategory.Groceries;
+    private string payerId = "";
+    private SplitType splitType = SplitType.Equal;
+    private string? error;
+    private bool busy;
+
+    private decimal Total => rows.Where(r => r.Included).Sum(r => r.Value ?? 0m);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthProvider.GetAuthenticationStateAsync();
+        var me = auth.User.FindFirst("sub")?.Value ?? Household.Members[0].UserId;
+
+        rows = Household.Members.Select(m => new Row { UserId = m.UserId, Name = m.DisplayName, Included = true }).ToList();
+        payerId = me;
+
+        if (Existing is null) return;
+
+        description = Existing.Description;
+        amount = Existing.Amount;
+        date = Existing.Date;
+        category = Existing.Category;
+        payerId = Existing.PayerId;
+        splitType = Existing.SplitType;
+
+        foreach (var row in rows)
+        {
+            var split = Existing.Splits.FirstOrDefault(s => s.UserId == row.UserId);
+            row.Included = split is not null;
+            if (split is null) continue;
+            row.Value = splitType switch
+            {
+                SplitType.Exact => split.Amount,
+                SplitType.Percentage => Math.Round(split.Amount / Existing.Amount * 100m, 2),
+                _ => null
+            };
+        }
+    }
+
+    private decimal EqualShare(Row row)
+    {
+        var included = rows.Where(r => r.Included).ToList();
+        try
+        {
+            var shares = SplitCalculator.Calculate(amount, SplitType.Equal, included.Select(r => new SplitInput(r.UserId, null)).ToList());
+            return shares.First(s => s.UserId == row.UserId).Amount;
+        }
+        catch (DomainValidationException)
+        {
+            return 0m;
+        }
+    }
+
+    /// <summary>Pre-fill percentage / exact inputs with an even split so the user only tweaks what differs.</summary>
+    private void FillEvenly()
+    {
+        var included = rows.Where(r => r.Included).ToList();
+        if (included.Count == 0 || amount <= 0) return;
+
+        var shares = SplitCalculator.Calculate(amount, SplitType.Equal, included.Select(r => new SplitInput(r.UserId, null)).ToList());
+
+        if (splitType == SplitType.Exact)
+        {
+            foreach (var row in included) row.Value = shares.First(s => s.UserId == row.UserId).Amount;
+        }
+        else
+        {
+            decimal running = 0;
+            for (var i = 0; i < included.Count; i++)
+            {
+                var pct = i == included.Count - 1
+                    ? 100m - running
+                    : Math.Round(shares.First(s => s.UserId == included[i].UserId).Amount / amount * 100m, 2);
+                included[i].Value = pct;
+                running += pct;
+            }
+        }
+    }
+
+    private async Task Submit()
+    {
+        error = null;
+        var participants = rows.Where(r => r.Included).ToList();
+        if (participants.Count == 0) { error = "Pick at least one person to share the expense."; return; }
+        if (string.IsNullOrWhiteSpace(description)) { error = "Add a description."; return; }
+
+        var request = new SaveExpenseRequest(
+            description.Trim(), amount, date, category, payerId, splitType,
+            participants.Select(r => new SplitParticipantRequest(r.UserId, splitType == SplitType.Equal ? null : r.Value)).ToList());
+
+        busy = true;
+        try
+        {
+            await Api.SaveExpenseAsync(Household.Id, Existing?.Id, request);
+            await OnSaved.InvokeAsync();
+        }
+        catch (ApiException ex) { error = ex.Message; }
+        finally { busy = false; }
+    }
+}

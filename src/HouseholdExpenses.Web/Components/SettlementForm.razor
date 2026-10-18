@@ -1,0 +1,86 @@
+@inject ApiClient Api
+
+<div class="card mt-3">
+    <div class="card-body">
+        <h3 class="h6">Record a payment</h3>
+
+        @if (error is not null)
+        {
+            <div class="alert alert-danger py-2" role="alert">@error</div>
+        }
+
+        <form class="row g-2 align-items-end" @onsubmit="Submit">
+            <div class="col-md-3">
+                <label class="form-label small mb-0">From</label>
+                <select class="form-select" @bind="fromId">
+                    @foreach (var m in Household.Members) { <option value="@m.UserId">@m.DisplayName</option> }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-0">To</label>
+                <select class="form-select" @bind="toId">
+                    @foreach (var m in Household.Members) { <option value="@m.UserId">@m.DisplayName</option> }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-0">Amount</label>
+                <input class="form-control" type="number" step="0.01" min="0.01" required @bind="amount" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-0">Date</label>
+                <input class="form-control" type="date" required @bind="date" />
+            </div>
+            <div class="col-md-12">
+                <label class="form-label small mb-0">Note (optional)</label>
+                <input class="form-control" maxlength="200" placeholder="e.g. Venmo" @bind="note" />
+            </div>
+            <div class="col-12 d-flex gap-2">
+                <button class="btn btn-success" type="submit" disabled="@busy">Save payment</button>
+                <button class="btn btn-outline-secondary" type="button" @onclick="OnCancel">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public HouseholdDetailDto Household { get; set; } = default!;
+    [Parameter] public SuggestedPaymentDto? Prefill { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private string fromId = "";
+    private string toId = "";
+    private decimal amount;
+    private DateOnly date = DateOnly.FromDateTime(DateTime.Today);
+    private string? note;
+    private string? error;
+    private bool busy;
+
+    protected override void OnInitialized()
+    {
+        if (Prefill is not null)
+        {
+            fromId = Prefill.FromUserId;
+            toId = Prefill.ToUserId;
+            amount = Prefill.Amount;
+        }
+        else
+        {
+            fromId = Household.Members[0].UserId;
+            toId = Household.Members.Count > 1 ? Household.Members[1].UserId : fromId;
+        }
+    }
+
+    private async Task Submit()
+    {
+        busy = true;
+        error = null;
+        try
+        {
+            await Api.CreateSettlementAsync(Household.Id, new SaveSettlementRequest(fromId, toId, amount, date, note));
+            await OnSaved.InvokeAsync();
+        }
+        catch (ApiException ex) { error = ex.Message; }
+        finally { busy = false; }
+    }
+}

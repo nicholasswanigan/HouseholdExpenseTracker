@@ -1,0 +1,103 @@
+@page "/household/{Id:guid}"
+@attribute [Authorize]
+@inject ApiClient Api
+@inject NavigationManager Nav
+@inject IJSRuntime Js
+
+<PageTitle>@(household?.Name ?? "Household")</PageTitle>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger" role="alert">@error</div>
+}
+
+@if (household is null)
+{
+    @if (error is null) { <p class="text-muted">Loading...</p> }
+}
+else
+{
+    <div class="d-flex flex-wrap justify-content-between align-items-start mb-3 gap-2">
+        <div>
+            <h1 class="h3 mb-1">@household.Name</h1>
+            <div class="text-muted small">Invite code: <span class="invite-code">@household.InviteCode</span></div>
+        </div>
+        <a class="btn btn-outline-secondary btn-sm" href="">All households</a>
+    </div>
+
+    <ul class="nav nav-tabs mb-3">
+        <li class="nav-item"><button class="nav-link @Active(Tab.Dashboard)" @onclick="() => tab = Tab.Dashboard">Balances</button></li>
+        <li class="nav-item"><button class="nav-link @Active(Tab.Expenses)" @onclick="() => tab = Tab.Expenses">Expenses</button></li>
+        <li class="nav-item"><button class="nav-link @Active(Tab.Members)" @onclick="() => tab = Tab.Members">Members</button></li>
+    </ul>
+
+    @switch (tab)
+    {
+        case Tab.Dashboard:
+            <BalancesPanel Household="household" />
+            break;
+        case Tab.Expenses:
+            <ExpensesPanel Household="household" />
+            break;
+        case Tab.Members:
+            <div class="card">
+                <ul class="list-group list-group-flush">
+                    @foreach (var m in household.Members)
+                    {
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>@m.DisplayName <span class="text-muted small">@m.Email</span></span>
+                            @if (m.Role == HouseholdRole.Owner) { <span class="badge bg-secondary">owner</span> }
+                        </li>
+                    }
+                </ul>
+            </div>
+            <p class="text-muted small mt-3">Share the invite code above with roommates or family so they can join.</p>
+            <div class="mt-3 d-flex gap-2">
+                <button class="btn btn-outline-danger btn-sm" @onclick="Leave">Leave household</button>
+                @if (household.MyRole == HouseholdRole.Owner)
+                {
+                    <button class="btn btn-danger btn-sm" @onclick="DeleteHousehold">Delete household</button>
+                }
+            </div>
+            break;
+    }
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private enum Tab { Dashboard, Expenses, Members }
+
+    private HouseholdDetailDto? household;
+    private Tab tab = Tab.Dashboard;
+    private string? error;
+
+    private string Active(Tab t) => t == tab ? "active" : "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        error = null;
+        household = null;
+        try { household = await Api.GetHouseholdAsync(Id); }
+        catch (ApiException ex) { error = ex.Message; }
+    }
+
+    private async Task Leave()
+    {
+        if (!await Js.InvokeAsync<bool>("confirm", "Leave this household? You must be settled up first.")) return;
+        await Try(async () => { await Api.LeaveHouseholdAsync(Id); Nav.NavigateTo(""); });
+    }
+
+    private async Task DeleteHousehold()
+    {
+        if (!await Js.InvokeAsync<bool>("confirm", "Delete this household and ALL its expenses for everyone? This cannot be undone.")) return;
+        await Try(async () => { await Api.DeleteHouseholdAsync(Id); Nav.NavigateTo(""); });
+    }
+
+    private async Task Try(Func<Task> action)
+    {
+        error = null;
+        try { await action(); }
+        catch (ApiException ex) { error = ex.Message; }
+    }
+}

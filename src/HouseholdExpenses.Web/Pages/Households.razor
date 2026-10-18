@@ -1,0 +1,93 @@
+@page "/"
+@attribute [Authorize]
+@inject ApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Your households</PageTitle>
+
+<h1 class="h3 mb-3">Your households</h1>
+
+@if (error is not null)
+{
+    <div class="alert alert-danger" role="alert">@error</div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        @if (households is null)
+        {
+            <p class="text-muted">Loading...</p>
+        }
+        else if (households.Count == 0)
+        {
+            <div class="alert alert-info">You're not in a household yet. Create one, or join with an invite code.</div>
+        }
+        else
+        {
+            <div class="list-group">
+                @foreach (var h in households)
+                {
+                    <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="household/@h.Id">
+                        <span class="fw-semibold">@h.Name</span>
+                        <span class="text-muted small">
+                            @h.MemberCount member@(h.MemberCount == 1 ? "" : "s")
+                            @if (h.MyRole == HouseholdRole.Owner) { <span class="badge bg-secondary ms-2">owner</span> }
+                        </span>
+                    </a>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card mb-3">
+            <div class="card-body">
+                <h2 class="h6">Create a household</h2>
+                <form class="input-group" @onsubmit="Create">
+                    <input class="form-control" placeholder="e.g. 12 Oak Street" maxlength="80" required @bind="newName" />
+                    <button class="btn btn-success" type="submit" disabled="@busy">Create</button>
+                </form>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <h2 class="h6">Join with an invite code</h2>
+                <form class="input-group" @onsubmit="Join">
+                    <input class="form-control text-uppercase" placeholder="ABCD2345" maxlength="32" required @bind="inviteCode" />
+                    <button class="btn btn-outline-success" type="submit" disabled="@busy">Join</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<HouseholdSummaryDto>? households;
+    private string newName = "";
+    private string inviteCode = "";
+    private string? error;
+    private bool busy;
+
+    protected override Task OnInitializedAsync() => Run(async () => households = await Api.GetHouseholdsAsync());
+
+    private Task Create() => Run(async () =>
+    {
+        var created = await Api.CreateHouseholdAsync(newName.Trim());
+        Nav.NavigateTo($"household/{created.Id}");
+    });
+
+    private Task Join() => Run(async () =>
+    {
+        var joined = await Api.JoinHouseholdAsync(inviteCode.Trim());
+        Nav.NavigateTo($"household/{joined.Id}");
+    });
+
+    private async Task Run(Func<Task> action)
+    {
+        busy = true;
+        error = null;
+        try { await action(); }
+        catch (ApiException ex) { error = ex.Message; }
+        finally { busy = false; }
+    }
+}

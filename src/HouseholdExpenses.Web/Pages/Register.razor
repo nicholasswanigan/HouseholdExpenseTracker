@@ -1,0 +1,63 @@
+@page "/register"
+@inject ApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Sign up</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-5 col-lg-4">
+        <h1 class="h3 mb-3">Create your account</h1>
+
+        @if (error is not null)
+        {
+            <div class="alert alert-danger" role="alert">@error</div>
+        }
+
+        <form @onsubmit="Submit">
+            <div class="mb-3">
+                <label class="form-label" for="name">Your name</label>
+                <input id="name" class="form-control" maxlength="60" required @bind="displayName" />
+                <div class="form-text">Shown to your housemates.</div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="email">Email</label>
+                <input id="email" class="form-control" type="email" autocomplete="username" required @bind="email" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="password">Password</label>
+                <input id="password" class="form-control" type="password" autocomplete="new-password" minlength="8" required @bind="password" />
+                <div class="form-text">At least 8 characters, with an upper-case letter, a lower-case letter and a digit.</div>
+            </div>
+            <button class="btn btn-success w-100" type="submit" disabled="@busy">@(busy ? "Creating..." : "Sign up")</button>
+        </form>
+
+        <p class="mt-3 text-muted">Already have an account? <a href="login">Sign in</a></p>
+    </div>
+</div>
+
+@code {
+    private string displayName = "";
+    private string email = "";
+    private string password = "";
+    private string? error;
+    private bool busy;
+
+    private async Task Submit()
+    {
+        busy = true;
+        error = null;
+        try
+        {
+            await Api.RegisterAsync(new RegisterRequest(email, password, displayName));
+            Nav.NavigateTo("");
+        }
+        catch (ApiException ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}

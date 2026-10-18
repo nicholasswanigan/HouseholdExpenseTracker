@@ -1,0 +1,56 @@
+@page "/login"
+@inject ApiClient Api
+@inject NavigationManager Nav
+
+<PageTitle>Sign in</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-md-5 col-lg-4">
+        <h1 class="h3 mb-3">Sign in</h1>
+
+        @if (error is not null)
+        {
+            <div class="alert alert-danger" role="alert">@error</div>
+        }
+
+        <form @onsubmit="Submit">
+            <div class="mb-3">
+                <label class="form-label" for="email">Email</label>
+                <input id="email" class="form-control" type="email" autocomplete="username" required @bind="email" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="password">Password</label>
+                <input id="password" class="form-control" type="password" autocomplete="current-password" required @bind="password" />
+            </div>
+            <button class="btn btn-success w-100" type="submit" disabled="@busy">@(busy ? "Signing in..." : "Sign in")</button>
+        </form>
+
+        <p class="mt-3 text-muted">New here? <a href="register">Create an account</a></p>
+    </div>
+</div>
+
+@code {
+    private string email = "";
+    private string password = "";
+    private string? error;
+    private bool busy;
+
+    private async Task Submit()
+    {
+        busy = true;
+        error = null;
+        try
+        {
+            await Api.LoginAsync(new LoginRequest(email, password));
+            Nav.NavigateTo("");
+        }
+        catch (ApiException ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            busy = false;
+        }
+    }
+}
