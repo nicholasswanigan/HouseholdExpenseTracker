@@ -10,23 +10,23 @@
         }
 
         <form class="row g-2 align-items-end" @onsubmit="Submit">
-            <div class="col-md-3">
+            <div class="col-sm-6 col-lg-3">
                 <label class="form-label small mb-0">From</label>
                 <select class="form-select" @bind="fromId">
                     @foreach (var m in Household.Members) { <option value="@m.UserId">@m.DisplayName</option> }
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-sm-6 col-lg-3">
                 <label class="form-label small mb-0">To</label>
                 <select class="form-select" @bind="toId">
                     @foreach (var m in Household.Members) { <option value="@m.UserId">@m.DisplayName</option> }
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-sm-6 col-lg-3">
                 <label class="form-label small mb-0">Amount</label>
                 <input class="form-control" type="number" step="0.01" min="0.01" required @bind="amount" />
             </div>
-            <div class="col-md-3">
+            <div class="col-sm-6 col-lg-3">
                 <label class="form-label small mb-0">Date</label>
                 <input class="form-control" type="date" required @bind="date" />
             </div>

@@ -13,31 +13,31 @@
 
         <form @onsubmit="Submit">
             <div class="row g-2">
-                <div class="col-md-4">
+                <div class="col-12">
                     <label class="form-label small mb-0">Description</label>
                     <input class="form-control" maxlength="200" required placeholder="e.g. Weekly groceries" @bind="description" />
                 </div>
-                <div class="col-md-2">
+                <div class="col-sm-4">
                     <label class="form-label small mb-0">Amount</label>
                     <input class="form-control" type="number" step="0.01" min="0.01" required @bind="amount" @bind:after="StateHasChanged" />
                 </div>
-                <div class="col-md-3">
+                <div class="col-sm-4">
                     <label class="form-label small mb-0">Date</label>
                     <input class="form-control" type="date" required @bind="date" />
                 </div>
-                <div class="col-md-3">
+                <div class="col-sm-4">
                     <label class="form-label small mb-0">Category</label>
                     <select class="form-select" @bind="category">
                         @foreach (var c in Enum.GetValues<ExpenseCategory>()) { <option value="@c">@c</option> }
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-sm-6">
                     <label class="form-label small mb-0">Paid by</label>
                     <select class="form-select" @bind="payerId">
                         @foreach (var m in Household.Members) { <option value="@m.UserId">@m.DisplayName</option> }
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-sm-6">
                     <label class="form-label small mb-0">Split</label>
                     <select class="form-select" @bind="splitType" @bind:after="StateHasChanged">
                         <option value="@SplitType.Equal">Evenly</option>
